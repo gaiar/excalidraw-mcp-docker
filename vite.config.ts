@@ -10,6 +10,7 @@ export default defineConfig({
     __EXCALIDRAW_URL__: JSON.stringify(process.env.EXCALIDRAW_URL ?? 'https://excalidraw.com'),
     __EXCALIDRAW_EXPORT_ENABLED__: process.env.EXCALIDRAW_EXPORT_ENABLED === 'true',
     __EXCALIDRAW_SAVE_FILE_ENABLED__: process.env.EXCALIDRAW_SAVE_FILE_ENABLED !== 'false',
+    __EXCALIDRAW_FULLSCREEN_ENABLED__: process.env.EXCALIDRAW_FULLSCREEN_ENABLED === 'true',
   },
   plugins: [react(), viteSingleFile()],
   build: {

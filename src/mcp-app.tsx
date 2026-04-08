@@ -1138,10 +1138,12 @@ export function ExcalidrawAppCore({ app }: { app: App }) {
             />
           )}
 
-          <button className="app-button" onClick={toggleFullscreen} title="Enter fullscreen">
-            <span>Edit</span>
-            <ExpandIcon />
-          </button>
+          {__EXCALIDRAW_FULLSCREEN_ENABLED__ && (
+            <button className="app-button" onClick={toggleFullscreen} title="Enter fullscreen">
+              <span>Edit</span>
+              <ExpandIcon />
+            </button>
+          )}
         </div>
       )}
       {/* Editor: mount hidden when ready, reveal after viewport is set */}
