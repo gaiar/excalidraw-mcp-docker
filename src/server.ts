@@ -15,6 +15,11 @@ import type { CheckpointStore } from './checkpoint-store.js';
 /** Maximum allowed size for element/data input strings (5 MB). */
 const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
+/** Excalidraw instance URLs — configurable for self-hosted instances. */
+const EXCALIDRAW_URL = process.env.EXCALIDRAW_URL ?? 'https://excalidraw.com';
+const EXCALIDRAW_API_URL =
+  process.env.EXCALIDRAW_API_URL ?? 'https://json.excalidraw.com/api/v2/post/';
+
 // Works both from source (src/server.ts) and compiled (dist/server.js)
 const DIST_DIR = import.meta.filename.endsWith('.ts')
   ? path.join(import.meta.dirname, '..', 'dist')
@@ -556,7 +561,7 @@ However, if the user wants to edit something on this diagram "${checkpointId}", 
     server,
     'export_to_excalidraw',
     {
-      description: 'Upload diagram to excalidraw.com and return shareable URL.',
+      description: `Upload diagram to ${EXCALIDRAW_URL} and return shareable URL.`,
       inputSchema: { json: z.string().describe('Serialized Excalidraw JSON') },
       _meta: { ui: { visibility: ['app'] } },
     },
@@ -622,7 +627,7 @@ However, if the user wants to edit something on this diagram "${checkpointId}", 
         const payload = Buffer.from(concatBuffers(encodingMeta, iv, new Uint8Array(encrypted)));
 
         // 5. Upload to excalidraw backend
-        const res = await fetch('https://json.excalidraw.com/api/v2/post/', {
+        const res = await fetch(EXCALIDRAW_API_URL, {
           method: 'POST',
           body: payload,
         });
@@ -631,12 +636,17 @@ However, if the user wants to edit something on this diagram "${checkpointId}", 
 
         // 6. Export key as base64url string
         const jwk = await globalThis.crypto.subtle.exportKey('jwk', cryptoKey);
-        const url = `https://excalidraw.com/#json=${id},${jwk.k}`;
+        const url = `${EXCALIDRAW_URL}/#json=${id},${jwk.k}`;
 
         return { content: [{ type: 'text', text: url }] };
       } catch (err) {
         return {
-          content: [{ type: 'text', text: `Export failed: ${(err as Error).message}` }],
+          content: [
+            {
+              type: 'text',
+              text: `Export failed: ${(err as Error).message}${(err as any).cause ? ` (cause: ${(err as any).cause.message ?? (err as any).cause})` : ''}`,
+            },
+          ],
           isError: true,
         };
       }

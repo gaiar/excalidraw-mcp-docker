@@ -241,7 +241,12 @@ function ShareButton({
           <div className="Island export-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="export-modal-title">Export to Excalidraw</h3>
             <p className="export-modal-text">
-              This will upload your diagram to excalidraw.com and open it in a new tab.
+              This will upload your diagram to{' '}
+              {(typeof __EXCALIDRAW_URL__ !== 'undefined'
+                ? __EXCALIDRAW_URL__
+                : 'https://excalidraw.com'
+              ).replace(/^https?:\/\//, '')}{' '}
+              and open it in a new tab.
             </p>
             <div className="export-modal-actions">
               <button className="standalone" onClick={() => setState('idle')}>

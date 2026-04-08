@@ -6,6 +6,9 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 export default defineConfig({
+  define: {
+    __EXCALIDRAW_URL__: JSON.stringify(process.env.EXCALIDRAW_URL ?? 'https://excalidraw.com'),
+  },
   plugins: [react(), viteSingleFile()],
   build: {
     sourcemap: isDevelopment ? 'inline' : undefined,

@@ -1,6 +1,9 @@
 services:
   excalidraw-mcp:
-    build: .
+    build:
+      context: .
+      args:
+        EXCALIDRAW_URL: ${EXCALIDRAW_URL:-https://excalidraw.com}
     ports:
       - '${PORT:-3000}:3000'
     environment:
@@ -14,6 +17,8 @@ services:
       - VALKEY_TLS_CA_CERT=/tls/ca.crt
       - VALKEY_TLS_CLIENT_CERT=/tls/valkey-client.crt
       - VALKEY_TLS_CLIENT_KEY=/tls/valkey-client.key
+      - EXCALIDRAW_URL=${EXCALIDRAW_URL:-https://excalidraw.com}
+      - EXCALIDRAW_API_URL=${EXCALIDRAW_API_URL:-https://json.excalidraw.com/api/v2/post/}
     volumes:
       - ./docker/valkey/tls:/tls:ro
     depends_on:

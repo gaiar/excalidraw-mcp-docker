@@ -11,6 +11,10 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+
+ARG EXCALIDRAW_URL=https://excalidraw.com
+ENV EXCALIDRAW_URL=${EXCALIDRAW_URL}
+
 RUN pnpm run build:docker
 
 # --- Runtime stage ---
