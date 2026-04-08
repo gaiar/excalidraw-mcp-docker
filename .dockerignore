@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+coverage
+__tests__
+*.test.ts
+.claude
+.env
+.env.*
+AUDIT.md
+PROGRESS.md
+TASK.md

@@ -4,35 +4,48 @@
  * Or: node dist/index.js [--stdio]
  */
 
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import cors from "cors";
-import type { Request, Response } from "express";
-import { FileCheckpointStore } from "./checkpoint-store.js";
-import { createServer } from "./server.js";
+import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import cors from 'cors';
+import type { Request, Response, NextFunction } from 'express';
+import type { Server } from 'node:http';
+import { createStore } from './checkpoint-store.js';
+import { createServer } from './server.js';
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+/** Request logging middleware */
+function requestLogger(req: Request, res: Response, next: NextFunction): void {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+}
 
 /**
- * Starts an MCP server with Streamable HTTP transport in stateless mode.
- *
- * @param createServer - Factory function that creates a new McpServer instance per request.
+ * Creates and configures the Express app with MCP routes.
+ * Exported for testing.
  */
-export async function startStreamableHTTPServer(
-  createServer: () => McpServer,
-): Promise<void> {
-  const port = parseInt(process.env.PORT ?? "3001", 10);
-
-  const app = createMcpExpressApp({ host: "0.0.0.0" });
+export function createApp(serverFactory: () => McpServer): ReturnType<typeof createMcpExpressApp> {
+  const app = createMcpExpressApp({ host: '0.0.0.0' });
   app.use(cors());
+  app.use(requestLogger);
 
-  app.all("/mcp", async (req: Request, res: Response) => {
-    const server = createServer();
+  app.get('/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok', uptime: process.uptime() });
+  });
+
+  app.all('/mcp', async (req: Request, res: Response) => {
+    const server = serverFactory();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
 
-    res.on("close", () => {
+    res.on('close', () => {
       transport.close().catch(() => {});
       server.close().catch(() => {});
     });
@@ -41,56 +54,85 @@ export async function startStreamableHTTPServer(
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      console.error("MCP error:", error);
+      console.error('MCP error:', error);
       if (!res.headersSent) {
         res.status(500).json({
-          jsonrpc: "2.0",
-          error: { code: -32603, message: "Internal server error" },
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal server error' },
           id: null,
         });
       }
     }
   });
 
-  const httpServer = app.listen(port, (err) => {
-    if (err) {
-      console.error("Failed to start server:", err);
-      process.exit(1);
-    }
-    console.log(`MCP server listening on http://localhost:${port}/mcp`);
+  return app;
+}
+
+/**
+ * Starts an MCP server with Streamable HTTP transport in stateless mode.
+ */
+export async function startStreamableHTTPServer(serverFactory: () => McpServer): Promise<Server> {
+  const port = parseInt(process.env.PORT ?? '3000', 10);
+  const host = process.env.HOST ?? '0.0.0.0';
+
+  const app = createApp(serverFactory);
+
+  return new Promise<Server>((resolve, reject) => {
+    const httpServer = app.listen(port, host, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      console.log(`MCP server listening on http://${host}:${port}/mcp`);
+      resolve(httpServer);
+    });
+
+    /* v8 ignore start -- shutdown handlers can't be tested without killing the process */
+    const shutdown = () => {
+      console.log('\nShutting down...');
+      httpServer.close(() => process.exit(0));
+      setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, SHUTDOWN_TIMEOUT_MS);
+    };
+
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+    /* v8 ignore stop */
   });
-
-  const shutdown = () => {
-    console.log("\nShutting down...");
-    httpServer.close(() => process.exit(0));
-  };
-
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
 }
 
 /**
  * Starts an MCP server with stdio transport.
- *
- * @param createServer - Factory function that creates a new McpServer instance.
  */
-export async function startStdioServer(
-  createServer: () => McpServer,
-): Promise<void> {
-  await createServer().connect(new StdioServerTransport());
+export async function startStdioServer(serverFactory: () => McpServer): Promise<void> {
+  await serverFactory().connect(new StdioServerTransport());
 }
 
+/* v8 ignore start -- CLI entry point, tested via integration/smoke tests */
 async function main() {
-  const store = new FileCheckpointStore();
+  const store = createStore();
   const factory = () => createServer(store);
-  if (process.argv.includes("--stdio")) {
+  if (process.argv.includes('--stdio')) {
     await startStdioServer(factory);
   } else {
     await startStreamableHTTPServer(factory);
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Only run main() when executed directly (not imported in tests)
+const isDirectRun =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  (process.argv[1].endsWith('/main.ts') ||
+    process.argv[1].endsWith('/main.js') ||
+    process.argv[1].endsWith('/index.js'));
+
+if (isDirectRun) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
+/* v8 ignore stop */

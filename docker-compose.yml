@@ -1,0 +1,92 @@
+services:
+  excalidraw-mcp:
+    build: .
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+      - VALKEY_TLS_ENABLED=true
+      - VALKEY_TLS_CA_CERT=/tls/ca.crt
+      - VALKEY_TLS_CLIENT_CERT=/tls/valkey-client.crt
+      - VALKEY_TLS_CLIENT_KEY=/tls/valkey-client.key
+    volumes:
+      - ./docker/valkey/tls:/tls:ro
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=50M
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD}
+    entrypoint: ['/entrypoint.sh']
+    volumes:
+      - valkey-data:/data
+      - ./docker/valkey/valkey.conf:/etc/valkey/valkey.conf:ro
+      - ./docker/valkey/tls:/tls:ro
+      - ./docker/valkey/entrypoint.sh:/entrypoint.sh:ro
+    # NO ports: section — Valkey is NOT exposed to host
+    networks:
+      - backend
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 192m
+    cpus: 0.25
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'valkey-cli',
+          '--tls',
+          '--cert',
+          '/tls/valkey-client.crt',
+          '--key',
+          '/tls/valkey-client.key',
+          '--cacert',
+          '/tls/ca.crt',
+          '--user',
+          'excalidraw',
+          '-a',
+          '${VALKEY_PASSWORD}',
+          'ping',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  valkey-data:
+    driver: local
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true

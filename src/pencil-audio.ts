@@ -1,4 +1,4 @@
-import { PENCIL_STROKE_SOFT } from "./sounds";
+import { PENCIL_STROKE_SOFT } from './sounds';
 
 /**
  * Pencil stroke audio engine.
@@ -38,7 +38,7 @@ export async function initPencilAudio(): Promise<void> {
       softBuffer = await decodeBase64Audio(PENCIL_STROKE_SOFT);
       initialized = true;
     } catch (e) {
-      console.warn("[PencilAudio] Failed to init:", e);
+      console.warn('[PencilAudio] Failed to init:', e);
     }
   })();
   return initPromise;
@@ -49,12 +49,12 @@ export function playStroke(elementType: string): void {
   if (!initialized || !audioCtx) return;
 
   // Use soft stroke for all element types
-  const isLine = elementType === "arrow" || elementType === "line";
+  const isLine = elementType === 'arrow' || elementType === 'line';
   const buffer = softBuffer;
   if (!buffer) return;
 
   // Resume context if suspended (autoplay policy)
-  if (audioCtx.state === "suspended") {
+  if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
   }
 
@@ -69,7 +69,7 @@ export function playStroke(elementType: string): void {
 
   // Gain node for volume envelope — normalize across samples
   const gain = ctx.createGain();
-  const isText = elementType === "text";
+  const isText = elementType === 'text';
   // Per-type gain normalization: shapes are most prominent, text medium, arrows lighter
   const typeGain = isLine ? 1.0 : isText ? 2.0 : 2.5;
   const baseVolume = (0.8 + Math.random() * 0.4) * typeGain; // normalized

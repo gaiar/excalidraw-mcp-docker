@@ -1,6 +1,6 @@
-import path from "path";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import path from 'path';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 /**
  * Dev-only vite config — serves the widget standalone (no MCP host).
@@ -9,10 +9,10 @@ import react from "@vitejs/plugin-react";
  */
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, open: "/index-dev.html" },
+  server: { port: 5173, open: '/index-dev.html' },
   build: {
     rollupOptions: {
-      input: path.resolve(__dirname, "index-dev.html"),
+      input: path.resolve(__dirname, 'index-dev.html'),
     },
   },
 });

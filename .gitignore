@@ -6,3 +6,10 @@ dist/
 bun.lock
 .vscode
 opencode.json
+
+# TLS certificates (never commit)
+docker/valkey/tls/*
+!docker/valkey/tls/.gitkeep
+
+# Environment secrets
+.env

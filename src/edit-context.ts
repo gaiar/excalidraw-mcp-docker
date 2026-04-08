@@ -1,4 +1,4 @@
-import type { App } from "@modelcontextprotocol/ext-apps";
+import type { App } from '@modelcontextprotocol/ext-apps';
 
 const DEBOUNCE_MS = 2000;
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -26,7 +26,7 @@ export function setCheckpointId(id: string) {
  * Call once after final render to capture the baseline element state.
  */
 export function captureInitialElements(elements: readonly any[]) {
-  initialSnapshot = JSON.stringify(elements.map((el: any) => el.id + ":" + (el.version ?? 0)));
+  initialSnapshot = JSON.stringify(elements.map((el: any) => el.id + ':' + (el.version ?? 0)));
   initialElementsById = new Map(elements.map((el: any) => [el.id, el]));
 }
 
@@ -42,11 +42,17 @@ function computeDiff(current: any[]): string {
     const orig = initialElementsById.get(el.id);
     if (!orig) {
       // New element — include type, position, and text if any
-      const desc = `${el.type} "${el.text ?? el.label?.text ?? ""}" at (${Math.round(el.x)},${Math.round(el.y)})`;
+      const desc = `${el.type} "${el.text ?? el.label?.text ?? ''}" at (${Math.round(el.x)},${Math.round(el.y)})`;
       added.push(desc);
-    } else if (Math.round(orig.x) !== Math.round(el.x) || Math.round(orig.y) !== Math.round(el.y) ||
-               Math.round(orig.width) !== Math.round(el.width) || Math.round(orig.height) !== Math.round(el.height)) {
-      moved.push(`${el.id} → (${Math.round(el.x)},${Math.round(el.y)}) ${Math.round(el.width)}x${Math.round(el.height)}`);
+    } else if (
+      Math.round(orig.x) !== Math.round(el.x) ||
+      Math.round(orig.y) !== Math.round(el.y) ||
+      Math.round(orig.width) !== Math.round(el.width) ||
+      Math.round(orig.height) !== Math.round(el.height)
+    ) {
+      moved.push(
+        `${el.id} → (${Math.round(el.x)},${Math.round(el.y)}) ${Math.round(el.width)}x${Math.round(el.height)}`,
+      );
     }
   }
 
@@ -55,12 +61,12 @@ function computeDiff(current: any[]): string {
   }
 
   const parts: string[] = [];
-  if (added.length) parts.push(`Added: ${added.join("; ")}`);
-  if (removed.length) parts.push(`Removed: ${removed.join(", ")}`);
-  if (moved.length) parts.push(`Moved/resized: ${moved.join("; ")}`);
-  if (!parts.length) return "";
-  const cpRef = checkpointId ? ` (checkpoint: ${checkpointId})` : "";
-  return `User edited diagram${cpRef}. ${parts.join(". ")}`;
+  if (added.length) parts.push(`Added: ${added.join('; ')}`);
+  if (removed.length) parts.push(`Removed: ${removed.join(', ')}`);
+  if (moved.length) parts.push(`Moved/resized: ${moved.join('; ')}`);
+  if (!parts.length) return '';
+  const cpRef = checkpointId ? ` (checkpoint: ${checkpointId})` : '';
+  return `User edited diagram${cpRef}. ${parts.join('. ')}`;
 }
 
 /**
@@ -94,7 +100,9 @@ export function getLatestEditedElements(): any[] | null {
  * (debounced). Does NOT call setState to avoid infinite re-render loops.
  */
 export function onEditorChange(app: App, elements: readonly any[]) {
-  const currentSnapshot = JSON.stringify(elements.map((el: any) => el.id + ":" + (el.version ?? 0)));
+  const currentSnapshot = JSON.stringify(
+    elements.map((el: any) => el.id + ':' + (el.version ?? 0)),
+  );
   if (currentSnapshot === initialSnapshot) return;
 
   const live = [...elements].filter((el: any) => !el.isDeleted);
@@ -108,16 +116,20 @@ export function onEditorChange(app: App, elements: readonly any[]) {
       } catch {}
     }
     if (checkpointId) {
-      app.callServerTool({
-        name: "save_checkpoint",
-        arguments: { id: checkpointId, data: JSON.stringify({ elements: live }) },
-      }).catch(() => {});
+      app
+        .callServerTool({
+          name: 'save_checkpoint',
+          arguments: { id: checkpointId, data: JSON.stringify({ elements: live }) },
+        })
+        .catch(() => {});
     }
     const diff = computeDiff(live);
     if (diff) {
-      app.updateModelContext({
-        content: [{ type: "text", text: diff }],
-      }).catch(() => {});
+      app
+        .updateModelContext({
+          content: [{ type: 'text', text: diff }],
+        })
+        .catch(() => {});
     }
   }, DEBOUNCE_MS);
 }

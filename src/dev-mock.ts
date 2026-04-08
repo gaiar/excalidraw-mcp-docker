@@ -4,7 +4,7 @@
  * Implements the subset of the App interface used by ExcalidrawAppCore,
  * and exposes methods to simulate MCP events (tool input, streaming, etc.).
  */
-import type { App } from "@modelcontextprotocol/ext-apps";
+import type { App } from '@modelcontextprotocol/ext-apps';
 
 export interface MockAppControls {
   /** Pass this to <ExcalidrawAppCore app={mock.app} /> */
@@ -31,16 +31,36 @@ export function createMockApp(): MockAppControls {
 
   const app = {
     // --- Handler setters (ExcalidrawAppCore assigns these) ---
-    set ontoolinput(fn: any) { _ontoolinput = fn; },
-    get ontoolinput() { return _ontoolinput; },
-    set ontoolinputpartial(fn: any) { _ontoolinputpartial = fn; },
-    get ontoolinputpartial() { return _ontoolinputpartial; },
-    set ontoolresult(fn: any) { _ontoolresult = fn; },
-    get ontoolresult() { return _ontoolresult; },
-    set onhostcontextchanged(fn: any) { _onhostcontextchanged = fn; },
-    get onhostcontextchanged() { return _onhostcontextchanged; },
-    set onteardown(_fn: any) { /* noop */ },
-    set onerror(_fn: any) { /* noop */ },
+    set ontoolinput(fn: any) {
+      _ontoolinput = fn;
+    },
+    get ontoolinput() {
+      return _ontoolinput;
+    },
+    set ontoolinputpartial(fn: any) {
+      _ontoolinputpartial = fn;
+    },
+    get ontoolinputpartial() {
+      return _ontoolinputpartial;
+    },
+    set ontoolresult(fn: any) {
+      _ontoolresult = fn;
+    },
+    get ontoolresult() {
+      return _ontoolresult;
+    },
+    set onhostcontextchanged(fn: any) {
+      _onhostcontextchanged = fn;
+    },
+    get onhostcontextchanged() {
+      return _onhostcontextchanged;
+    },
+    set onteardown(_fn: any) {
+      /* noop */
+    },
+    set onerror(_fn: any) {
+      /* noop */
+    },
 
     // --- Methods ---
     sendLog({ logger, data }: { level: string; logger: string; data: string }) {
@@ -60,15 +80,18 @@ export function createMockApp(): MockAppControls {
 
     async callServerTool({ name, arguments: args }: { name: string; arguments: any }) {
       console.log(`[mock] callServerTool: ${name}`, args);
-      if (name === "read_checkpoint") {
-        return { content: [{ type: "text", text: "null" }], isError: false };
+      if (name === 'read_checkpoint') {
+        return { content: [{ type: 'text', text: 'null' }], isError: false };
       }
-      if (name === "save_checkpoint") {
+      if (name === 'save_checkpoint') {
         return { content: [], isError: false };
       }
-      if (name === "export_to_excalidraw") {
+      if (name === 'export_to_excalidraw') {
         // Return a mock URL
-        return { content: [{ type: "text", text: "https://excalidraw.com/#mock-dev" }], isError: false };
+        return {
+          content: [{ type: 'text', text: 'https://excalidraw.com/#mock-dev' }],
+          isError: false,
+        };
       }
       return { content: [], isError: false };
     },
@@ -79,11 +102,11 @@ export function createMockApp(): MockAppControls {
 
     async openLink({ url }: { url: string }) {
       console.log(`[mock] openLink: ${url}`);
-      window.open(url, "_blank");
+      window.open(url, '_blank');
     },
 
     async updateModelContext(opts: any) {
-      console.log("[mock] updateModelContext", opts);
+      console.log('[mock] updateModelContext', opts);
     },
   } as unknown as App;
 
@@ -98,7 +121,7 @@ export function createMockApp(): MockAppControls {
       _ontoolinputpartial?.({ elements: JSON.stringify(elements) });
     },
 
-    sendToolResult(checkpointId = "dev-checkpoint") {
+    sendToolResult(checkpointId = 'dev-checkpoint') {
       _ontoolresult?.({ structuredContent: { checkpointId } });
     },
 
