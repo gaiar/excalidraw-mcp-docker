@@ -4,6 +4,8 @@ services:
       context: .
       args:
         EXCALIDRAW_URL: ${EXCALIDRAW_URL:-https://excalidraw.com}
+        EXCALIDRAW_EXPORT_ENABLED: ${EXCALIDRAW_EXPORT_ENABLED:-false}
+        EXCALIDRAW_SAVE_FILE_ENABLED: ${EXCALIDRAW_SAVE_FILE_ENABLED:-true}
     ports:
       - '${PORT:-3000}:3000'
     environment:

@@ -264,6 +264,79 @@ function ShareButton({
 }
 
 // ============================================================
+// Save to file button
+// ============================================================
+
+const DownloadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
+async function saveToFile(data: { elements: any[]; appState: any; files: any }, app: App) {
+  try {
+    if (!data.elements?.length) return;
+    const json = serializeAsJSON(data.elements, data.appState, data.files, 'database');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `excalidraw-${timestamp}.excalidraw`;
+
+    await app.downloadFile({
+      contents: [
+        {
+          type: 'resource',
+          resource: {
+            uri: `file:///${filename}`,
+            mimeType: 'application/json',
+            text: json,
+          },
+        },
+      ],
+    });
+  } catch (err) {
+    fsLog(`saveToFile error: ${err}`);
+  }
+}
+
+function SaveToFileButton({ onSave, compact }: { onSave: () => Promise<void>; compact?: boolean }) {
+  const [saving, setSaving] = useState(false);
+
+  const handleClick = async () => {
+    setSaving(true);
+    try {
+      await onSave();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <button
+      className="app-button"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        width: 'auto',
+        padding: '0 10px',
+        marginRight: compact ? 0 : -8,
+      }}
+      title="Save as .excalidraw file"
+      disabled={saving}
+      onClick={handleClick}
+    >
+      <DownloadIcon />
+      {!compact && (
+        <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>
+          {saving ? 'Saving…' : 'Save to File'}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ============================================================
 // Diagram component (Excalidraw SVG)
 // ============================================================
 
@@ -1043,18 +1116,27 @@ export function ExcalidrawAppCore({ app }: { app: App }) {
     >
       {displayMode === 'inline' && (
         <div className="toolbar">
-          <ShareButton
-            onConfirm={async () => {
-              await shareToExcalidraw(
-                {
-                  elements,
-                  appState: {},
-                  files: {},
-                },
-                app,
-              );
-            }}
-          />
+          {__EXCALIDRAW_SAVE_FILE_ENABLED__ && (
+            <SaveToFileButton
+              onSave={async () => {
+                await saveToFile({ elements, appState: {}, files: {} }, app);
+              }}
+            />
+          )}
+          {__EXCALIDRAW_EXPORT_ENABLED__ && (
+            <ShareButton
+              onConfirm={async () => {
+                await shareToExcalidraw(
+                  {
+                    elements,
+                    appState: {},
+                    files: {},
+                  },
+                  app,
+                );
+              }}
+            />
+          )}
 
           <button className="app-button" onClick={toggleFullscreen} title="Enter fullscreen">
             <span>Edit</span>
@@ -1085,17 +1167,32 @@ export function ExcalidrawAppCore({ app }: { app: App }) {
               isNarrow
                 ? undefined
                 : () => (
-                    <ShareButton
-                      onConfirm={async () => {
-                        if (excalidrawApi) {
-                          const elements = excalidrawApi.getSceneElements();
-                          const appState = excalidrawApi.getAppState();
-                          const files = excalidrawApi.getFiles();
-
-                          await shareToExcalidraw({ elements, appState, files }, app);
-                        }
-                      }}
-                    />
+                    <>
+                      {__EXCALIDRAW_SAVE_FILE_ENABLED__ && (
+                        <SaveToFileButton
+                          onSave={async () => {
+                            if (excalidrawApi) {
+                              const elements = excalidrawApi.getSceneElements();
+                              const appState = excalidrawApi.getAppState();
+                              const files = excalidrawApi.getFiles();
+                              await saveToFile({ elements, appState, files }, app);
+                            }
+                          }}
+                        />
+                      )}
+                      {__EXCALIDRAW_EXPORT_ENABLED__ && (
+                        <ShareButton
+                          onConfirm={async () => {
+                            if (excalidrawApi) {
+                              const elements = excalidrawApi.getSceneElements();
+                              const appState = excalidrawApi.getAppState();
+                              const files = excalidrawApi.getFiles();
+                              await shareToExcalidraw({ elements, appState, files }, app);
+                            }
+                          }}
+                        />
+                      )}
+                    </>
                   )
             }
           >
@@ -1144,17 +1241,32 @@ export function ExcalidrawAppCore({ app }: { app: App }) {
           </Excalidraw>
           {isNarrow && (
             <div className="mobile-share-slot">
-              <ShareButton
-                compact
-                onConfirm={async () => {
-                  if (excalidrawApi) {
-                    const elements = excalidrawApi.getSceneElements();
-                    const appState = excalidrawApi.getAppState();
-                    const files = excalidrawApi.getFiles();
-                    await shareToExcalidraw({ elements, appState, files }, app);
-                  }
-                }}
-              />
+              {__EXCALIDRAW_SAVE_FILE_ENABLED__ && (
+                <SaveToFileButton
+                  compact
+                  onSave={async () => {
+                    if (excalidrawApi) {
+                      const elements = excalidrawApi.getSceneElements();
+                      const appState = excalidrawApi.getAppState();
+                      const files = excalidrawApi.getFiles();
+                      await saveToFile({ elements, appState, files }, app);
+                    }
+                  }}
+                />
+              )}
+              {__EXCALIDRAW_EXPORT_ENABLED__ && (
+                <ShareButton
+                  compact
+                  onConfirm={async () => {
+                    if (excalidrawApi) {
+                      const elements = excalidrawApi.getSceneElements();
+                      const appState = excalidrawApi.getAppState();
+                      const files = excalidrawApi.getFiles();
+                      await shareToExcalidraw({ elements, appState, files }, app);
+                    }
+                  }}
+                />
+              )}
             </div>
           )}
         </div>

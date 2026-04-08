@@ -8,6 +8,8 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export default defineConfig({
   define: {
     __EXCALIDRAW_URL__: JSON.stringify(process.env.EXCALIDRAW_URL ?? 'https://excalidraw.com'),
+    __EXCALIDRAW_EXPORT_ENABLED__: process.env.EXCALIDRAW_EXPORT_ENABLED === 'true',
+    __EXCALIDRAW_SAVE_FILE_ENABLED__: process.env.EXCALIDRAW_SAVE_FILE_ENABLED !== 'false',
   },
   plugins: [react(), viteSingleFile()],
   build: {
