@@ -10,7 +10,7 @@ This deployment targets accidental exposure and opportunistic attacks, not sophi
 | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Unauthorized access to checkpoint data (stored diagrams) | Valkey ACL user with key-pattern restrictions; no exposed port                 |
 | Data exfiltration from Valkey                            | Internal Docker network; no host port binding; TLS in transit                  |
-| MITM between app and Valkey containers                   | Mutual TLS with client certificates                                            |
+| MITM between app and Valkey containers                   | TLS encryption; optional client certificates; mandatory password auth          |
 | Privilege escalation within containers                   | `no-new-privileges:true`; non-root user (`appuser:1001`); read-only filesystem |
 | Network exposure of internal services                    | `internal: true` Docker network; only MCP port 3000 published to host          |
 | Brute-force of Valkey credentials                        | Random 32-byte base64 password generated at setup; non-standard TLS port       |
@@ -19,26 +19,28 @@ This deployment targets accidental exposure and opportunistic attacks, not sophi
 
 ## Network Isolation
 
-The Docker Compose network is declared as `internal: true`:
+The Docker Compose stack uses two networks:
 
 ```yaml
 networks:
-  internal:
+  frontend:
+    driver: bridge # app publishes port here
+  backend:
     driver: bridge
-    internal: true
+    internal: true # Valkey-only, no internet
 ```
 
 This means:
 
-- **No external gateway** — containers on this network cannot reach the internet
-- **No host routing** — Docker does not add a default route to the host's network interface
+- **Valkey sits on `backend` only** — an `internal: true` network with no external gateway or internet access
 - **Valkey has no `ports:` mapping** — it is completely unreachable from the host or any external network
-- Only the MCP app (`excalidraw-mcp`) exposes a port: `${PORT:-3000}:3000` on the host interface
+- **The app bridges both networks** — `frontend` for host port publishing, `backend` for Valkey access
+- The app container _can_ reach the internet (needed for esm.sh CDN font loading); Valkey _cannot_
 
 Traffic flow:
 
 ```
-Internet → Host:3000 → excalidraw-mcp container → (internal network) → valkey container
+Internet → Host:3000 → excalidraw-mcp (frontend) → (backend, internal) → valkey
                                                          (no internet access)
 ```
 
@@ -108,15 +110,16 @@ The default Valkey user is disabled. A dedicated `excalidraw` user enforces leas
 
 ```
 user default off
-user excalidraw on >${VALKEY_PASSWORD} ~checkpoint:* ~cp:* +get +set +del +expire +scan +ping +info +client +command +auth &* resetchannels
+user excalidraw on >${VALKEY_PASSWORD} ~checkpoint:* ~cp:* +get +set +del +expire +ping +client|setname +client|setinfo +auth resetchannels
 ```
 
-| Restriction          | Value                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| Allowed key patterns | `checkpoint:*` and `cp:*` only                                                         |
-| Allowed commands     | `get`, `set`, `del`, `expire`, `scan`, `ping`, `info`, `client`, `command`, `auth`     |
-| Pub/sub channels     | All channels allowed (`&*`), but channel subscriptions reset on auth (`resetchannels`) |
-| Password             | Random 32-byte base64, set via `VALKEY_PASSWORD` environment variable                  |
+<!-- prettier-ignore -->
+| Restriction | Value |
+| --- | --- |
+| Allowed key patterns | `checkpoint:*` and `cp:*` only |
+| Allowed commands | `get`, `set`, `del`, `expire`, `ping`, `client\|setname`, `client\|setinfo`, `auth` |
+| Pub/sub channels | None (`resetchannels`) |
+| Password | Random 32-byte base64, set via `VALKEY_PASSWORD` environment variable |
 
 The app cannot read, write, or delete any key outside `checkpoint:*` / `cp:*` — even if the app container is compromised.
 
@@ -208,18 +211,23 @@ No build tools, source files, or dev dependencies are present in the runtime ima
 
 ```
 docker/valkey/tls/        ← gitignored, not committed
-├── ca.key                ← CA private key (600)
+├── ca.key                ← CA private key (644)
 ├── ca.crt                ← CA certificate (644)
-├── valkey-server.key     ← Server private key (600)
+├── valkey-server.key     ← Server private key (644)
 ├── valkey-server.crt     ← Server certificate (644)
-├── valkey-client.key     ← Client private key (600)
+├── valkey-client.key     ← Client private key (644)
 ├── valkey-client.crt     ← Client certificate (644)
 └── .gitkeep              ← Keeps directory in git
 ```
 
 File permissions set by `generate-certs.sh`:
 
-- `*.key` — `600` (owner read/write only)
+- `*.key` — `644` (world-readable). This is intentional: Docker bind-mount volumes
+  preserve host file permissions, and the Valkey container (UID 999) and app container
+  (UID 1001) run as different non-root users. Mode `644` allows both to read the keys.
+  These are self-signed certificates used only within the Docker internal network.
+  For production deployments requiring stricter key isolation, use Docker secrets or
+  align container UIDs to a shared GID.
 - `*.crt` — `644` (world-readable)
 
 Certificate details:
@@ -272,6 +280,14 @@ MCP tool calls (which tools were called, with what arguments) are not logged. Th
 No alerting on unusual access patterns (e.g., scanning unknown key prefixes, repeated auth failures).
 
 **Recommendation:** Enable Valkey's `notify-keyspace-events` and consume events for anomaly detection if needed.
+
+### Widget loads code from esm.sh CDN
+
+The Excalidraw widget loads the Virgil hand-drawn font from `https://esm.sh` at runtime. This means the app container requires internet access and is **not fully air-gapped**. If you need a fully isolated deployment, the font must be vendored into the build.
+
+### `export_to_excalidraw` sends data externally
+
+The `export_to_excalidraw` MCP tool posts diagram JSON to `https://json.excalidraw.com/api/v2/post/`. This sends user diagram data to an external service. For no-data-leak deployments, this tool should be disabled or gated behind an environment variable.
 
 ### Valkey data at rest is unencrypted
 

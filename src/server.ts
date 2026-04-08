@@ -455,7 +455,19 @@ Call read_me first to learn the element format.`,
       }
       let parsed: any[];
       try {
-        parsed = JSON.parse(elements);
+        const raw = JSON.parse(elements);
+        if (!Array.isArray(raw)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Elements must be a JSON array, not an object or primitive.',
+              },
+            ],
+            isError: true,
+          };
+        }
+        parsed = raw;
       } catch (e) {
         return {
           content: [
@@ -652,7 +664,19 @@ However, if the user wants to edit something on this diagram "${checkpointId}", 
         };
       }
       try {
-        await store.save(id, JSON.parse(data));
+        const parsed = JSON.parse(data);
+        if (!parsed || !Array.isArray(parsed.elements)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Checkpoint data must be an object with an "elements" array.',
+              },
+            ],
+            isError: true,
+          };
+        }
+        await store.save(id, parsed);
         return { content: [{ type: 'text', text: 'ok' }] };
       } catch (err) {
         return {

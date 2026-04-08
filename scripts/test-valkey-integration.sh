@@ -216,7 +216,7 @@ else
   exit 1
 fi
 
-# If we captured a checkpoint ID, attempt to load it via create_view with restoreCheckpoint
+# If we captured a checkpoint ID, attempt to restore it via create_view with restoreCheckpoint pseudo-element
 if [ "${CHECKPOINT_ID:-}" != "unknown" ] && [ -n "${CHECKPOINT_ID:-}" ]; then
   echo "  Verifying checkpoint ${CHECKPOINT_ID} survived restart..."
   RESTORE_RESPONSE=$(curl -sf -X POST "${BASE_URL}/mcp" \
@@ -229,8 +229,7 @@ if [ "${CHECKPOINT_ID:-}" != "unknown" ] && [ -n "${CHECKPOINT_ID:-}" ]; then
       \"params\": {
         \"name\": \"create_view\",
         \"arguments\": {
-          \"elements\": \"[]\",
-          \"restoreCheckpoint\": \"${CHECKPOINT_ID}\"
+          \"elements\": \"[{\\\"type\\\":\\\"restoreCheckpoint\\\",\\\"id\\\":\\\"${CHECKPOINT_ID}\\\"}]\"
         }
       }
     }" 2>/dev/null || echo "")

@@ -61,20 +61,8 @@ services:
     healthcheck:
       test:
         [
-          'CMD',
-          'valkey-cli',
-          '--tls',
-          '--cert',
-          '/tls/valkey-client.crt',
-          '--key',
-          '/tls/valkey-client.key',
-          '--cacert',
-          '/tls/ca.crt',
-          '--user',
-          'excalidraw',
-          '-a',
-          '${VALKEY_PASSWORD}',
-          'ping',
+          'CMD-SHELL',
+          'valkey-cli --tls --cert /tls/valkey-client.crt --key /tls/valkey-client.key --cacert /tls/ca.crt --user excalidraw -a $$VALKEY_PASSWORD ping',
         ]
       interval: 10s
       timeout: 5s

@@ -63,27 +63,23 @@ else
   exit 1
 fi
 
-# Test 2: tools/list (call read_me tool)
-echo "Test 2: Call read_me tool..."
-TOOL_RESPONSE=$(curl -sf -X POST "${BASE_URL}/mcp" \
+# Test 2: tools/list
+echo "Test 2: tools/list..."
+TOOLS_RESPONSE=$(curl -sf -X POST "${BASE_URL}/mcp" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 1,
-    "method": "initialize",
-    "params": {
-      "protocolVersion": "2025-03-26",
-      "capabilities": {},
-      "clientInfo": {"name": "smoke-test", "version": "1.0"}
-    }
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
   }')
 
-if echo "$TOOL_RESPONSE" | grep -q "capabilities\|serverInfo"; then
-  echo "  PASS: MCP capabilities confirmed"
+if echo "$TOOLS_RESPONSE" | grep -q "read_me\|create_view"; then
+  echo "  PASS: tools/list returned expected tools"
 else
-  echo "  FAIL: Unexpected response"
-  echo "  Response: $TOOL_RESPONSE"
+  echo "  FAIL: tools/list did not return expected tools"
+  echo "  Response: $TOOLS_RESPONSE"
   exit 1
 fi
 

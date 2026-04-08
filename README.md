@@ -11,7 +11,7 @@ Self-hosted Excalidraw MCP server with Valkey persistence.
 A fork of [excalidraw/excalidraw-mcp](https://github.com/excalidraw/excalidraw-mcp) that adds Docker and Valkey for self-hosted and on-premise deployments.
 
 - **Use upstream** if you deploy to Vercel or want the hosted cloud experience.
-- **Use this fork** if you need to run everything on your own infrastructure -- air-gapped, on-premise, or simply on your local machine with persistent diagram storage.
+- **Use this fork** if you need to run everything on your own infrastructure -- on-premise, home lab, or local machine with persistent diagram storage. Note: the Excalidraw widget loads a font from `esm.sh` at runtime, so internet access is still required.
 
 What this fork adds:
 
