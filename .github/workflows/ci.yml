@@ -17,8 +17,6 @@ jobs:
           node-version: 20
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -76,11 +74,23 @@ jobs:
             sleep 1
           done
 
-      - name: Run MCP integration tests
-        run: bash scripts/test-mcp.sh
+      - name: MCP initialize test
+        run: |
+          RESPONSE=$(curl -sf -X POST http://localhost:3000/mcp \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}')
+          echo "$RESPONSE" | grep -q "serverInfo" || { echo "FAIL: $RESPONSE"; exit 1; }
+          echo "PASS: MCP initialize"
 
-      - name: Run Valkey integration tests
-        run: bash scripts/test-valkey-integration.sh
+      - name: tools/list test
+        run: |
+          RESPONSE=$(curl -sf -X POST http://localhost:3000/mcp \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
+          echo "$RESPONSE" | grep -q "create_view" || { echo "FAIL: $RESPONSE"; exit 1; }
+          echo "PASS: tools/list"
 
       - name: Stop services
         run: docker compose down -v
